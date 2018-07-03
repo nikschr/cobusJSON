@@ -1,0 +1,2 @@
+# cobusJSON
+Schnittstelle wiredMinds
