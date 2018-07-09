@@ -12,6 +12,7 @@ import java.util.Iterator;
 import java.util.Scanner;
 
 import org.apache.commons.io.IOUtils;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -45,8 +46,9 @@ public class parseTheJSON {
 	        Object keyvalue = jsonObj.get(keyStr);
 
 	        //Print key and value
-	        System.out.println("key: "+ keyStr + " value: " + keyvalue);
-
+//	        if(keyStr == "company")
+	        	System.out.println("key: "+ keyStr + " value: " + keyvalue);
+	        
 	        //for nested objects iteration if required
 	        if (keyvalue instanceof JSONObject)
 	            printJsonObject((JSONObject)keyvalue);
@@ -62,7 +64,8 @@ public class parseTheJSON {
 		String encoding = con.getContentEncoding();
 		encoding = encoding == null ? "UTF-8" : encoding;
 		String body = IOUtils.toString(in, encoding);
-		//System.out.println(body);
+		
+//		System.out.println(body);
 		
 		Scanner scan = new Scanner(url.openStream());
 		String str = new String();
@@ -76,16 +79,24 @@ public class parseTheJSON {
 //		System.out.println(obj.get("email"));
 		
 		JSONObject jsonObj = new JSONObject(body.substring(body.indexOf('{')));
-		System.out.println(jsonObj.get("company"));
+//		System.out.println(jsonObj.get("company"));
 		
 //		printJsonObject(jsonObj);
 		
-		Iterator keys = jsonObj.keys();
-		while(keys.hasNext()) {
-			Object key = keys.next();
-			JSONObject value = jsonObj.getJSONObject((String)key);
-			String component = value.getString("company");
-			System.out.println(component);
+		try {
+			JSONArray jsonArray = new JSONArray(body);
+ 
+			int count = jsonArray.length(); // get totalCount of all jsonObjects
+			for(int i=0 ; i< count; i++){   // iterate through jsonArray 
+				JSONObject jsonObject = jsonArray.getJSONObject(i);  // get jsonObject @ i position 
+//				System.out.println("jsonObject " + i + ": " + jsonObject);
+				String company = jsonObject.getString("company");
+				System.out.println(company);
+				String address = jsonObject.getString("address");
+				System.out.println(address);
+			}
+		} catch (JSONException e) {
+			e.printStackTrace();
 		}
 		
 	}
