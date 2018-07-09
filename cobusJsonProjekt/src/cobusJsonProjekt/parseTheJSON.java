@@ -8,7 +8,6 @@ import java.io.Reader;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.Charset;
-import java.util.Iterator;
 import java.util.Scanner;
 
 import org.apache.commons.io.IOUtils;
@@ -56,32 +55,26 @@ public class parseTheJSON {
 	}
 
 	public static void main(String[] args) throws IOException {
-		// TODO Auto-generated method stub
+		
 		URL url = new URL("http://www.json-generator.com/api/json/get/bUbmMVOGyG?indent=2");
 		
+		//reading the JSON-content via URL Connection & Inputstream
 		URLConnection con = url.openConnection();
 		InputStream in = con.getInputStream();
 		String encoding = con.getContentEncoding();
 		encoding = encoding == null ? "UTF-8" : encoding;
-		String body = IOUtils.toString(in, encoding);
+		String body = IOUtils.toString(in, encoding);	
 		
-//		System.out.println(body);
-		
+		//reading the json content via scanner
 		Scanner scan = new Scanner(url.openStream());
 		String str = new String();
 		while(scan.hasNext())
 			str += scan.nextLine();
 		scan.close();
-		//System.out.println(str);
+//		System.out.println(str);
 		
-//		JSONObject obj = readJsonFromUrl("http://www.json-generator.com/api/json/get/bUbmMVOGyG?indent=2");
-//		System.out.println(obj.toString());
-//		System.out.println(obj.get("email"));
-		
+		//JSONObject beginnt ab '{' statt bei '['
 		JSONObject jsonObj = new JSONObject(body.substring(body.indexOf('{')));
-//		System.out.println(jsonObj.get("company"));
-		
-//		printJsonObject(jsonObj);
 		
 		try {
 			JSONArray jsonArray = new JSONArray(body);
