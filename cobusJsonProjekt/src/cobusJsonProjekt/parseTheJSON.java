@@ -13,6 +13,7 @@ import java.nio.charset.Charset;
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -66,6 +67,7 @@ public class parseTheJSON {
 	public static void main(String[] args) throws IOException, SQLException {
 		
 		URL url = new URL("http://www.json-generator.com/api/json/get/bUbmMVOGyG?indent=2");
+		
 		String sqlConnectionString;
 		String compName;
 		
@@ -115,18 +117,31 @@ public class parseTheJSON {
  
 			int count = jsonArray.length(); // get totalCount of all jsonObjects
 			for(int i=0 ; i< count; i++){   // iterate through jsonArray 
+				int isDublicate = 0;
 				JSONObject jsonObject = jsonArray.getJSONObject(i);  // get jsonObject @ i position 
 //				System.out.println("jsonObject " + i + ": " + jsonObject);
 				String company = jsonObject.getString("company");
+				String email = jsonObject.getString("email");
 				
 				while(resultSet.next()) {
 		        	compName = resultSet.getString("COMPNAME");
 		        	if(compName == company) {
-		        		System.out.println("Firma bereits vorhanden");
+		        		isDublicate = 1;
+		        		break;
 		        	}else {
-		        		
+		        		isDublicate = 0;
 		        	}
 		        }
+				
+				if(isDublicate == 0) {
+					String callProc = "{call dbo.cobus (?, ?)}";
+					stmt = connection.prepareCall(callProc);
+					stmt.setString(1, company);
+					stmt.setString(2,  email);
+	                stmt.execute();
+				}else {
+					System.out.println("Die Firma" + company + "gibt es bereits im System");
+				}
 				
 				System.out.println(company);
 				String address = jsonObject.getString("address");
