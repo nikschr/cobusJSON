@@ -63,6 +63,29 @@ public class parseTheJSON {
 	            printJsonObject((JSONObject)keyvalue);
 	    }
 	}
+	
+	public static boolean checkDublicates(JSONArray jsonArray, ResultSet resultSet) throws SQLException {
+		boolean justCheckingThingsOut = false;
+		for(int j = 0; j < jsonArray.length(); j++) {
+			JSONObject jObject = jsonArray.getJSONObject(j);
+			String comp = jObject.getString("company");
+			String jComp = comp.toLowerCase();
+			while(resultSet.next()) {
+				String sqlCompanyCheck = resultSet.getString("COMPNAME");
+				String sqlCompanyCheckLower = sqlCompanyCheck.toLowerCase();
+				if(sqlCompanyCheckLower.equals(jComp)) {
+					justCheckingThingsOut = true;
+					break;
+				}else {
+					justCheckingThingsOut =  false;
+				}
+			}
+			if(justCheckingThingsOut == true) {
+				System.out.println("die Firma " + jComp + " ist bereits im System hinterlegt");
+			} 
+		}
+		return justCheckingThingsOut;
+	}
 
 	public static void main(String[] args) throws IOException, SQLException {
 		
@@ -97,13 +120,6 @@ public class parseTheJSON {
 		encoding = encoding == null ? "UTF-8" : encoding;
 		String body = IOUtils.toString(in, encoding);	
 		
-		//reading JSON-content via scanner
-		Scanner scan = new Scanner(url.openStream());
-		String str = new String();
-		while(scan.hasNext())
-			str += scan.nextLine();
-		scan.close();
-		
 		//JSONObject beginnt ab '{' statt bei '['
 		JSONObject jsonObj = new JSONObject(body.substring(body.indexOf('{')));
 		
@@ -111,46 +127,50 @@ public class parseTheJSON {
 		String sqlSelect = props.getProperty("selectString");
         selectStmt = connection.createStatement();
         resultSet = selectStmt.executeQuery(sqlSelect);
-        
+        Boolean isDublicate = false;
 		try {
 			JSONArray jsonArray = new JSONArray(body);
- 
+			
 			int count = jsonArray.length(); // get totalCount of all jsonObjects
-			for(int i=0 ; i< count; i++){   // iterate through jsonArray 
-				int isDublicate = 0;
+			for(int i=0 ; i < count; i++){   // iterate through jsonArray 
+
 				JSONObject jsonObject = jsonArray.getJSONObject(i);  // get jsonObject @ i position 
-//				System.out.println("jsonObject " + i + ": " + jsonObject);
 				String company = jsonObject.getString("company");
 				String email = jsonObject.getString("email");
+				String jsonComp = company.toLowerCase();
+				boolean tempBoo = checkDublicates(jsonArray, resultSet);
 				
 				while(resultSet.next()) {
 		        	compName = resultSet.getString("COMPNAME");
-		        	if(compName == company) {
-		        		isDublicate = 1;
+		        	String sqlComp = compName.toLowerCase();
+		        	if(sqlComp.equals(jsonComp)) {
+		        		isDublicate = true;
+//		        		System.out.println("Duplikat " + sqlComp + " " + jsonComp);
 		        		break;
 		        	}else {
-		        		isDublicate = 0;
+		        		isDublicate = false;
+//		        		System.out.println("Kein Duplikat " + sqlComp + " " + jsonComp);
 		        	}
 		        }
-				
-				if(isDublicate == 0) {
+				if(isDublicate) {
+	                System.out.println("Die Firma " + company + " gibt es bereits im System");
+				}else {
 					String callProc = "{call dbo.cobus (?, ?)}";
 					stmt = connection.prepareCall(callProc);
 					stmt.setString(1, company);
 					stmt.setString(2,  email);
 	                stmt.execute();
-				}else {
-					System.out.println("Die Firma" + company + "gibt es bereits im System");
 				}
-				
-				System.out.println(company);
-				String address = jsonObject.getString("address");
-				System.out.println(address);
 			}
-		} catch (JSONException e) {
+            
+		}catch (JSONException e) {
 			e.printStackTrace();
-		}
-		
+		}finally {
+            if (resultSet != null) try { resultSet.close(); } catch(Exception e) {}  
+            if (selectStmt != null) try { selectStmt.close(); } catch(Exception e) {}
+            if (stmt != null) try { stmt.close(); } catch(Exception e) {}
+            if (connection != null) try { connection.close(); } catch(Exception e){}
+            System.out.println("Connection closed");
+        }
 	}
-
 }
