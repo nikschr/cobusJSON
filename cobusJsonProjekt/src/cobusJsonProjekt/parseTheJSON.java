@@ -97,8 +97,11 @@ public class parseTheJSON {
 		//JDBC Objekte
 		Connection connection = null;
 		ResultSet resultSet = null;
+		ResultSet resultSetOrel = null;
 		Statement selectStmt = null;
+		Statement selectStmtOrel = null;
 		CallableStatement stmt = null;
+		CallableStatement stmtOrel = null;
 		
 		//config Datei einlesen
 		File configFile = new File("C:\\Users\\CUH-GWX9\\git\\cobusJSON\\cobusJsonProjekt\\src\\cobusJsonProjekt\\config.properties");
@@ -127,6 +130,12 @@ public class parseTheJSON {
 		String sqlSelect = props.getProperty("selectString");
         selectStmt = connection.createStatement();
         resultSet = selectStmt.executeQuery(sqlSelect);
+        
+        //Select Statement aus der Config für die AddressOrel Tabelle auslesen
+        String sqlSelectOrel = props.getProperty("selectStringOrel");
+        selectStmtOrel = connection.createStatement();
+        resultSetOrel = selectStmtOrel.executeQuery(sqlSelectOrel);
+        
         Boolean isDublicate = false;
 		try {
 			JSONArray jsonArray = new JSONArray(body);
@@ -160,6 +169,12 @@ public class parseTheJSON {
 					stmt.setString(1, company);
 					stmt.setString(2,  email);
 	                stmt.execute();
+	                
+	                String tableGuid = resultSetOrel.getString("GGUID");
+	                String callProcOrel = "{call dbo.cobusOrel (?)}";
+					stmtOrel = connection.prepareCall(callProcOrel);
+					stmtOrel.setString(1, tableGuid);
+	                stmtOrel.execute();
 				}
 			}
             
