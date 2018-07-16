@@ -48,6 +48,7 @@ public class parseTheJSON {
 		
 		//JDBC Objekte
 		Connection connection = null;
+		Connection connectionOrel = null;
 		ResultSet resultSet = null;
 		ResultSet resultSetOrel = null;
 		Statement selectStmt = null;
@@ -66,6 +67,7 @@ public class parseTheJSON {
 		
 		//Verbindung zum SQL server herstellen
 		connection = DriverManager.getConnection(sqlConnectionString);
+		connectionOrel = DriverManager.getConnection(sqlConnectionString);
 		System.out.println("Connected");
 		
 		//reading JSON-content via URL Connection & Inputstream
@@ -84,8 +86,6 @@ public class parseTheJSON {
         
         //Select Statement aus der Config für die AddressOrel Tabelle auslesen
         String sqlSelectOrel = props.getProperty("selectStringOrel");
-        selectStmtOrel = connection.createStatement();
-        resultSetOrel = selectStmtOrel.executeQuery(sqlSelectOrel);
         
         try {
 			JSONArray jsonArray = new JSONArray(body);
@@ -98,6 +98,12 @@ public class parseTheJSON {
 				String email = jsonObject.getString("email");
 				boolean tempBoo = getMyJSON(jsonObject, resultSet);
 				
+				String tableGuidSelect = "Select GGUID from ADDRESS0 where compname = 'visualix'"; 	
+				selectStmtOrel = connection.createStatement();
+		        resultSetOrel = selectStmtOrel.executeQuery(tableGuidSelect);
+		        String tableGuid = resultSetOrel.getString("GGUID");
+		        System.out.println(tableGuid);
+				
 				if(tempBoo == true) {
 	                System.out.println("Die Firma " + company + " gibt es bereits im System");
 				}else {
@@ -106,6 +112,7 @@ public class parseTheJSON {
 					stmt.setString(1, company);
 					stmt.setString(2,  email);
 	                stmt.execute();
+	                
 	                
 //	                String tableGuid = resultSetOrel.getString("GGUID");
 //	                String callProcOrel = "{call dbo.cobusOrel (?)}";
