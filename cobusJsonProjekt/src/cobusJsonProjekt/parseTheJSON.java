@@ -20,23 +20,22 @@ import org.json.JSONObject;
 
 public class parseTheJSON {
 	
-	public static boolean getMyJSON(JSONObject jsonObject, ResultSet rs) throws SQLException{
-		boolean isTrue = false;
-			String company = jsonObject.getString("company");
-			String email = jsonObject.getString("email");
-			String jsonComp = company.toLowerCase();
-			
-			while(rs.next()) {
-				String sqlCompName = rs.getString("COMPNAME");
-				String sqlComp = sqlCompName.toLowerCase();
-				if(sqlComp.equals(jsonComp)) {
-					isTrue = true;
-					break;
-				}else {
-					isTrue = false;
-				}
+	public static boolean compareCompanies(JSONObject jsonObject, ResultSet rs) throws SQLException{
+		boolean companiesMatch = false;
+		String jsonCompany = jsonObject.getString("company");
+		String jsonCompanyLower = jsonCompany.toLowerCase();
+		
+		while(rs.next()) {
+			String sqlCompany = rs.getString("COMPNAME");
+			String sqlCompanyLower = sqlCompany.toLowerCase();
+			if(sqlCompanyLower.equals(jsonCompanyLower)) {
+				companiesMatch = true;
+				break;
+			}else {
+				companiesMatch = false;
 			}
-		return isTrue;
+		}
+		return companiesMatch;
 	}
 
 	public static void main(String[] args) throws IOException, SQLException {
@@ -44,16 +43,14 @@ public class parseTheJSON {
 		URL url = new URL("http://www.json-generator.com/api/json/get/bUbmMVOGyG?indent=2");
 		
 		String sqlConnectionString;
-		String compName;
-		
+
 		//JDBC Objekte
 		Connection connection = null;
-		Connection connectionOrel = null;
-		ResultSet resultSet = null;
-		ResultSet resultSetOrel = null;
-		Statement selectStmt = null;
-		Statement selectStmtOrel = null;
-		CallableStatement stmt = null;
+		ResultSet resultSetAddress0 = null;
+		ResultSet resultSetAddressOrel = null;
+		Statement selectStmtAddress0 = null;
+		Statement selectStmtAddressOrel = null;
+		CallableStatement stmtInsertCompany = null;
 		CallableStatement stmtOrel = null;
 		
 		//config Datei einlesen
@@ -67,7 +64,6 @@ public class parseTheJSON {
 		
 		//Verbindung zum SQL server herstellen
 		connection = DriverManager.getConnection(sqlConnectionString);
-		connectionOrel = DriverManager.getConnection(sqlConnectionString);
 		System.out.println("Connected");
 		
 		//reading JSON-content via URL Connection & Inputstream
@@ -75,67 +71,63 @@ public class parseTheJSON {
 		InputStream in = con.getInputStream();
 		String encoding = con.getContentEncoding();
 		encoding = encoding == null ? "UTF-8" : encoding;
-		String body = IOUtils.toString(in, encoding);	
-		
-		//JSONObject body beginnt ab '{' statt bei '['
-		JSONObject jsonObj = new JSONObject(body.substring(body.indexOf('{')));
+		String jsonContent = IOUtils.toString(in, encoding);	
 		
 		//Select Statement aus der Config lesen
 		String sqlSelect = props.getProperty("selectString");
-        selectStmt = connection.createStatement();
-        connection.setAutoCommit(false);
+        selectStmtAddress0 = connection.createStatement();
         
         //Select Statement aus der Config für die AddressOrel Tabelle auslesen
         String sqlSelectOrel = props.getProperty("selectStringOrel");	
         
         try {
-			JSONArray jsonArray = new JSONArray(body);
+			JSONArray jsonArray = new JSONArray(jsonContent);
 			
 			int count = jsonArray.length(); // get totalCount of all jsonObjects
 			for(int i=0 ; i < count; i++){   // iterate through jsonArray 
-				resultSet = selectStmt.executeQuery(sqlSelect);
+				resultSetAddress0 = selectStmtAddress0.executeQuery(sqlSelect);
 				JSONObject jsonObject = jsonArray.getJSONObject(i);  // get jsonObject @ i position 
-				String company = jsonObject.getString("company");
-				String email = jsonObject.getString("email");
-				boolean tempBoo = getMyJSON(jsonObject, resultSet);
+				String jsonCompany = jsonObject.getString("company");
+				String jsonEmail = jsonObject.getString("email");
+				boolean doTheyMatch = compareCompanies(jsonObject, resultSetAddress0);
 				
-		        String tableGuidSelect = "Select GGUID from ADDRESS0 where compname = '" + company +"'"; 
+		        String tableGuidSelect = "Select GGUID from ADDRESS0 where compname = '" + jsonCompany +"'"; 
 				
-				if(tempBoo == true) {
-	                System.out.println("Die Firma " + company + " gibt es bereits im System");
+				if(doTheyMatch == true) {
+	                System.out.println("Die Firma " + jsonCompany + " gibt es bereits im System");
 				}else {
-					String callProc = "{call dbo.cobus (?, ?)}";
-					stmt = connection.prepareCall(callProc);
-					stmt.setString(1, company);
-					stmt.setString(2,  email);
-	                stmt.execute();
-			        
+					String callSpCobus = "{call dbo.cobus (?, ?)}";
+					stmtInsertCompany = connection.prepareCall(callSpCobus);
+					stmtInsertCompany.setString(1, jsonCompany);
+					stmtInsertCompany.setString(2,  jsonEmail);
+	                stmtInsertCompany.execute();			        
 				}
-		        selectStmtOrel = connectionOrel.createStatement();
-				resultSetOrel = selectStmtOrel.executeQuery(tableGuidSelect);
+		        selectStmtAddressOrel = connection.createStatement();
+				resultSetAddressOrel = selectStmtAddressOrel.executeQuery(tableGuidSelect);
 				
-				if(!resultSetOrel.next()) {
+				if(!resultSetAddressOrel.next()) {
 					System.out.println("Das ResultSet ist leer");
 				} else {
-					String tableGuid = resultSetOrel.getString("GGUID");
+					String tableGuid = resultSetAddressOrel.getString("GGUID");
 			        tableGuid = "0x" + tableGuid;
-					System.out.println(tableGuid);
-					String callProcOrel = "{call dbo.cobusOrel (?)}";
-					stmtOrel = connection.prepareCall(callProcOrel);
-					stmtOrel.setString(1, tableGuid);
-	                stmtOrel.execute();
-				}
-		        
-			}
-            
+			        String testGUID = resultSetAddress0.getString("GGUID");
+			        testGUID = "0x" + testGUID;
+			        System.out.println(tableGuid);
+					System.out.println(testGUID);
+//					String callProcOrel = "{call dbo.cobusOrel (?)}";
+//					stmtOrel = connection.prepareCall(callProcOrel);
+//					stmtOrel.setString(1, tableGuid);
+//	                stmtOrel.execute();
+				}	        
+			}          
 		}catch (JSONException e) {
 			e.printStackTrace();
 		}finally {
-            if (resultSet != null) try { resultSet.close(); } catch(Exception e) {}  
-            if (resultSetOrel != null) try { resultSetOrel.close(); } catch(Exception e) {}  
-            if (selectStmt != null) try { selectStmt.close(); } catch(Exception e) {}
-            if (selectStmtOrel != null) try { selectStmtOrel.close(); } catch(Exception e) {}
-            if (stmt != null) try { stmt.close(); } catch(Exception e) {}
+            if (resultSetAddress0 != null) try { resultSetAddress0.close(); } catch(Exception e) {}  
+            if (resultSetAddressOrel != null) try { resultSetAddressOrel.close(); } catch(Exception e) {}  
+            if (selectStmtAddress0 != null) try { selectStmtAddress0.close(); } catch(Exception e) {}
+            if (selectStmtAddressOrel != null) try { selectStmtAddressOrel.close(); } catch(Exception e) {}
+            if (stmtInsertCompany != null) try { stmtInsertCompany.close(); } catch(Exception e) {}
             if (connection != null) try { connection.close(); } catch(Exception e){}
             System.out.println("Connection closed");
         }
