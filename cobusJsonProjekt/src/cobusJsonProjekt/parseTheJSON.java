@@ -83,9 +83,10 @@ public class parseTheJSON {
 		//Select Statement aus der Config lesen
 		String sqlSelect = props.getProperty("selectString");
         selectStmt = connection.createStatement();
+        connection.setAutoCommit(false);
         
         //Select Statement aus der Config für die AddressOrel Tabelle auslesen
-        String sqlSelectOrel = props.getProperty("selectStringOrel");
+        String sqlSelectOrel = props.getProperty("selectStringOrel");	
         
         try {
 			JSONArray jsonArray = new JSONArray(body);
@@ -98,11 +99,7 @@ public class parseTheJSON {
 				String email = jsonObject.getString("email");
 				boolean tempBoo = getMyJSON(jsonObject, resultSet);
 				
-				String tableGuidSelect = "Select GGUID from ADDRESS0 where compname = 'visualix'"; 	
-				selectStmtOrel = connection.createStatement();
-		        resultSetOrel = selectStmtOrel.executeQuery(tableGuidSelect);
-		        String tableGuid = resultSetOrel.getString("GGUID");
-		        System.out.println(tableGuid);
+		        String tableGuidSelect = "Select GGUID from ADDRESS0 where compname = '" + company +"'"; 
 				
 				if(tempBoo == true) {
 	                System.out.println("Die Firma " + company + " gibt es bereits im System");
@@ -112,21 +109,32 @@ public class parseTheJSON {
 					stmt.setString(1, company);
 					stmt.setString(2,  email);
 	                stmt.execute();
-	                
-	                
-//	                String tableGuid = resultSetOrel.getString("GGUID");
-//	                String callProcOrel = "{call dbo.cobusOrel (?)}";
-//					stmtOrel = connection.prepareCall(callProcOrel);
-//					stmtOrel.setString(1, tableGuid);
-//	                stmtOrel.execute();
+			        
 				}
+		        selectStmtOrel = connectionOrel.createStatement();
+				resultSetOrel = selectStmtOrel.executeQuery(tableGuidSelect);
+				
+				if(!resultSetOrel.next()) {
+					System.out.println("Das ResultSet ist leer");
+				} else {
+					String tableGuid = resultSetOrel.getString("GGUID");
+			        tableGuid = "0x" + tableGuid;
+					System.out.println(tableGuid);
+					String callProcOrel = "{call dbo.cobusOrel (?)}";
+					stmtOrel = connection.prepareCall(callProcOrel);
+					stmtOrel.setString(1, tableGuid);
+	                stmtOrel.execute();
+				}
+		        
 			}
             
 		}catch (JSONException e) {
 			e.printStackTrace();
 		}finally {
             if (resultSet != null) try { resultSet.close(); } catch(Exception e) {}  
+            if (resultSetOrel != null) try { resultSetOrel.close(); } catch(Exception e) {}  
             if (selectStmt != null) try { selectStmt.close(); } catch(Exception e) {}
+            if (selectStmtOrel != null) try { selectStmtOrel.close(); } catch(Exception e) {}
             if (stmt != null) try { stmt.close(); } catch(Exception e) {}
             if (connection != null) try { connection.close(); } catch(Exception e){}
             System.out.println("Connection closed");
