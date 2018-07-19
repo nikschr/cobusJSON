@@ -37,6 +37,21 @@ public class parseTheJSON {
 		}
 		return companiesMatch;
 	}
+	
+	public static boolean compareGuids(String guidAddress0, ResultSet rs) throws SQLException {
+		boolean guidsMatch = true;
+		
+		while(rs.next()) {
+			String guidAddressOrel = rs.getString("TABLEGUID");
+			if(guidAddressOrel.equals(guidAddress0)) {
+				guidsMatch = true;
+				break;
+			}else {
+				guidsMatch = false;
+			}
+		}
+		return guidsMatch;
+	}
 
 	public static void main(String[] args) throws IOException, SQLException {
 		
@@ -51,7 +66,7 @@ public class parseTheJSON {
 		Statement selectStmtAddress0 = null;
 		Statement selectStmtAddressOrel = null;
 		CallableStatement stmtInsertCompany = null;
-		CallableStatement stmtOrel = null;
+		CallableStatement stmtInsertTableGuid = null;
 		
 		//config Datei einlesen
 		File configFile = new File("C:\\Users\\CUH-GWX9\\git\\cobusJSON\\cobusJsonProjekt\\src\\cobusJsonProjekt\\config.properties");
@@ -89,11 +104,11 @@ public class parseTheJSON {
 				JSONObject jsonObject = jsonArray.getJSONObject(i);  // get jsonObject @ i position 
 				String jsonCompany = jsonObject.getString("company");
 				String jsonEmail = jsonObject.getString("email");
-				boolean doTheyMatch = compareCompanies(jsonObject, resultSetAddress0);
+				boolean companiesMatch = compareCompanies(jsonObject, resultSetAddress0);
 				
 		        String tableGuidSelect = "Select GGUID from ADDRESS0 where compname = '" + jsonCompany +"'"; 
 				
-				if(doTheyMatch == true) {
+				if(companiesMatch == true) {
 	                System.out.println("Die Firma " + jsonCompany + " gibt es bereits im System");
 				}else {
 					String callSpCobus = "{call dbo.cobus (?, ?)}";
@@ -103,21 +118,23 @@ public class parseTheJSON {
 	                stmtInsertCompany.execute();			        
 				}
 		        selectStmtAddressOrel = connection.createStatement();
-				resultSetAddressOrel = selectStmtAddressOrel.executeQuery(tableGuidSelect);
+				resultSetAddressOrel = selectStmtAddressOrel.executeQuery(sqlSelectOrel);
 				
 				if(!resultSetAddressOrel.next()) {
 					System.out.println("Das ResultSet ist leer");
 				} else {
-					String tableGuid = resultSetAddressOrel.getString("GGUID");
+			        String tableGuid = resultSetAddress0.getString("GGUID");
+			        boolean guidsMatch = compareGuids(tableGuid, resultSetAddressOrel);
+			        System.out.println(guidsMatch);
 			        tableGuid = "0x" + tableGuid;
-			        String testGUID = resultSetAddress0.getString("GGUID");
-			        testGUID = "0x" + testGUID;
-			        System.out.println(tableGuid);
-					System.out.println(testGUID);
-//					String callProcOrel = "{call dbo.cobusOrel (?)}";
-//					stmtOrel = connection.prepareCall(callProcOrel);
-//					stmtOrel.setString(1, tableGuid);
-//	                stmtOrel.execute();
+			        if(guidsMatch == true) {
+			        	System.out.println("Die GUID " + tableGuid + " gibt es bereits in AddressOrel");
+			        } else {
+//			        	String callProcOrel = "{call dbo.cobusOrel (?)}";
+//						stmtInsertTableGuid = connection.prepareCall(callProcOrel);
+//						stmtInsertTableGuid.setString(1, tableGuid);
+//		                stmtInsertTableGuid.execute();
+			        }				
 				}	        
 			}          
 		}catch (JSONException e) {
@@ -128,6 +145,7 @@ public class parseTheJSON {
             if (selectStmtAddress0 != null) try { selectStmtAddress0.close(); } catch(Exception e) {}
             if (selectStmtAddressOrel != null) try { selectStmtAddressOrel.close(); } catch(Exception e) {}
             if (stmtInsertCompany != null) try { stmtInsertCompany.close(); } catch(Exception e) {}
+            if (stmtInsertTableGuid != null) try { stmtInsertTableGuid.close(); } catch(Exception e) {}
             if (connection != null) try { connection.close(); } catch(Exception e){}
             System.out.println("Connection closed");
         }
