@@ -17,8 +17,22 @@ import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import javax.swing.*;
 
 public class parseTheJSON {
+//	Diese Funktion übergibt einen Firmennamen aus den JSON-Daten und übergibt diesen an den SQL Server
+//	auf dem SQL Server wird die SP dbo.ExistsComp aufgerufen und der JSON-Firmenname wird mit den bestehenden Datensätzen abgeglichen
+	public static boolean dublettenCheck(JSONObject jsonObj, Connection con) throws SQLException {
+		String query = "{call dbo.ExistsComp (?, ?)}";
+		String jsonCompany = jsonObj.getString("company");
+		String jsonCompanyLower = jsonCompany.toLowerCase();
+		
+		CallableStatement compareComp = con.prepareCall(query);
+		compareComp.setString(1, jsonCompanyLower);
+		compareComp.registerOutParameter(2,  java.sql.Types.BOOLEAN);
+		compareComp.execute();	
+		return compareComp.getBoolean(2);
+	}
 	
 	public static boolean compareCompanies(JSONObject jsonObject, ResultSet rs) throws SQLException{
 		boolean companiesMatch = false;
@@ -81,7 +95,7 @@ public class parseTheJSON {
 		connection = DriverManager.getConnection(sqlConnectionString);
 		System.out.println("Connected");
 		
-		//reading JSON-content via URL Connection & Inputstream
+		//JSON per URL auslesen
 		URLConnection con = url.openConnection();
 		InputStream in = con.getInputStream();
 		String encoding = con.getContentEncoding();
@@ -92,9 +106,6 @@ public class parseTheJSON {
 		String sqlSelect = props.getProperty("selectString");
         selectStmtAddress0 = connection.createStatement();
         
-        //Select Statement aus der Config für die AddressOrel Tabelle auslesen
-        String sqlSelectOrel = props.getProperty("selectStringOrel");	
-        
         try {
 			JSONArray jsonArray = new JSONArray(jsonContent);
 			
@@ -104,38 +115,27 @@ public class parseTheJSON {
 				JSONObject jsonObject = jsonArray.getJSONObject(i);  // get jsonObject @ i position 
 				String jsonCompany = jsonObject.getString("company");
 				String jsonEmail = jsonObject.getString("email");
-				boolean companiesMatch = compareCompanies(jsonObject, resultSetAddress0);
+				boolean dublette = dublettenCheck(jsonObject, connection);
 				
-		        String tableGuidSelect = "Select GGUID from ADDRESS0 where compname = '" + jsonCompany +"'"; 
+				System.out.println(dublette);
 				
-				if(companiesMatch == true) {
+				if(dublette == true) {
 	                System.out.println("Die Firma " + jsonCompany + " gibt es bereits im System");
 				}else {
 					String callSpCobus = "{call dbo.cobus (?, ?)}";
 					stmtInsertCompany = connection.prepareCall(callSpCobus);
 					stmtInsertCompany.setString(1, jsonCompany);
 					stmtInsertCompany.setString(2,  jsonEmail);
-	                stmtInsertCompany.execute();			        
-				}
-		        selectStmtAddressOrel = connection.createStatement();
-				resultSetAddressOrel = selectStmtAddressOrel.executeQuery(sqlSelectOrel);
-				
-				if(!resultSetAddressOrel.next()) {
-					System.out.println("Das ResultSet ist leer");
-				} else {
-			        String tableGuid = resultSetAddress0.getString("GGUID");
-			        boolean guidsMatch = compareGuids(tableGuid, resultSetAddressOrel);
-			        System.out.println(guidsMatch);
-			        tableGuid = "0x" + tableGuid;
-			        if(guidsMatch == true) {
-			        	System.out.println("Die GUID " + tableGuid + " gibt es bereits in AddressOrel");
-			        } else {
-//			        	String callProcOrel = "{call dbo.cobusOrel (?)}";
-//						stmtInsertTableGuid = connection.prepareCall(callProcOrel);
-//						stmtInsertTableGuid.setString(1, tableGuid);
-//		                stmtInsertTableGuid.execute();
-			        }				
-				}	        
+	                stmtInsertCompany.execute();
+	                
+					while(resultSetAddress0.next()) {
+						String tableGuid = resultSetAddress0.getString("GGUID");
+						String callSpOrel = "{call dbo.cobusOrel (?)}";
+						stmtInsertTableGuid = connection.prepareCall(callSpOrel);
+						stmtInsertTableGuid.setString(1, tableGuid);
+		                stmtInsertTableGuid.execute();
+					}
+				}       
 			}          
 		}catch (JSONException e) {
 			e.printStackTrace();
