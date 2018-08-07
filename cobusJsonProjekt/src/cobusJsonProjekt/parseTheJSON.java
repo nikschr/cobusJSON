@@ -76,11 +76,10 @@ public class parseTheJSON {
 		//JDBC Objekte
 		Connection connection = null;
 		ResultSet resultSetAddress0 = null;
-		ResultSet resultSetAddressOrel = null;
 		Statement selectStmtAddress0 = null;
-		Statement selectStmtAddressOrel = null;
 		CallableStatement stmtInsertCompany = null;
 		CallableStatement stmtInsertTableGuid = null;
+		CallableStatement stmtInsertChangeLog = null;
 		
 		//config Datei einlesen
 		File configFile = new File("C:\\Users\\CUH-GWX9\\git\\cobusJSON\\cobusJsonProjekt\\src\\cobusJsonProjekt\\config.properties");
@@ -128,6 +127,11 @@ public class parseTheJSON {
 					stmtInsertCompany.setString(2,  jsonEmail);
 	                stmtInsertCompany.execute();
 	                
+	                String callSpChangeLog = "{call dbo.cobusChangeLog (?)}";
+	                stmtInsertChangeLog = connection.prepareCall(callSpChangeLog);
+	                stmtInsertChangeLog.setString(1, jsonCompany);
+	                stmtInsertChangeLog.execute();
+	                
 					while(resultSetAddress0.next()) {
 						String tableGuid = resultSetAddress0.getString("GGUID");
 						String callSpOrel = "{call dbo.cobusOrel (?)}";
@@ -141,11 +145,10 @@ public class parseTheJSON {
 			e.printStackTrace();
 		}finally {
             if (resultSetAddress0 != null) try { resultSetAddress0.close(); } catch(Exception e) {}  
-            if (resultSetAddressOrel != null) try { resultSetAddressOrel.close(); } catch(Exception e) {}  
             if (selectStmtAddress0 != null) try { selectStmtAddress0.close(); } catch(Exception e) {}
-            if (selectStmtAddressOrel != null) try { selectStmtAddressOrel.close(); } catch(Exception e) {}
             if (stmtInsertCompany != null) try { stmtInsertCompany.close(); } catch(Exception e) {}
             if (stmtInsertTableGuid != null) try { stmtInsertTableGuid.close(); } catch(Exception e) {}
+            if (stmtInsertChangeLog != null) try { stmtInsertChangeLog.close(); } catch(Exception e) {}
             if (connection != null) try { connection.close(); } catch(Exception e){}
             System.out.println("Connection closed");
         }
