@@ -69,7 +69,7 @@ public class parseTheJSON {
 
 	public static void main(String[] args) throws IOException, SQLException {
 		
-		URL url = new URL("http://www.json-generator.com/api/json/get/bUbmMVOGyG?indent=2");
+		URL url = new URL("http://www.json-generator.com/api/json/get/bVFTiqEvxe?indent=2");
 		
 		String sqlConnectionString;
 
@@ -105,7 +105,7 @@ public class parseTheJSON {
 		String sqlSelect = props.getProperty("selectString");
         selectStmtAddress0 = connection.createStatement();
         
-        try {
+        try { 
 			JSONArray jsonArray = new JSONArray(jsonContent);
 			
 			int count = jsonArray.length(); // get totalCount of all jsonObjects
@@ -132,13 +132,10 @@ public class parseTheJSON {
 	                stmtInsertChangeLog.setString(1, jsonCompany);
 	                stmtInsertChangeLog.execute();
 	                
-					while(resultSetAddress0.next()) {
-						String tableGuid = resultSetAddress0.getString("GGUID");
-						String callSpOrel = "{call dbo.cobusOrel (?)}";
-						stmtInsertTableGuid = connection.prepareCall(callSpOrel);
-						stmtInsertTableGuid.setString(1, tableGuid);
-		                stmtInsertTableGuid.execute();
-					}
+					String callSpOrel = "{call dbo.cobusOrel (?)}";
+					stmtInsertTableGuid = connection.prepareCall(callSpOrel);
+					stmtInsertTableGuid.setString(1, jsonCompany);
+	                stmtInsertTableGuid.execute();	
 				}       
 			}          
 		}catch (JSONException e) {
