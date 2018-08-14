@@ -9,9 +9,7 @@ import java.net.URLConnection;
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Properties;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
@@ -19,8 +17,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import com.microsoft.sqlserver.jdbc.SQLServerDataTable;
-
-import javax.swing.*;
 
 public class parseTheJSON {
 	//	Diese Funktion übergibt einen Firmennamen aus den JSON-Daten und übergibt diesen an den SQL Server
@@ -37,17 +33,23 @@ public class parseTheJSON {
 		return compareComp.getBoolean(2);
 	}
 	
+	public static String stringCreator(JSONArray jArr, String name) {
+		String stringBuilder = name + ": ";
+		int counter = jArr.length();
+		for(int i = 0; i < counter; i++) {
+			stringBuilder += jArr.getString(i);
+			stringBuilder = stringBuilder + ", ";
+		}
+		return stringBuilder;
+	}
+	
 	public static void main(String[] args) throws IOException, SQLException {
 		
-		URL url = new URL("http://www.json-generator.com/api/json/get/clQVAeNGzS?indent=2");	
+		URL url = new URL("https://comatra2.cobus-concept.de/app.php/feedreports/configs/1528791151589650420/feeds/229597e4efec158142537bdf77af80b22b91714d");	
 		String sqlConnectionString;
 
-		//JDBC Objekte
+		//JDBC Connection Objekt
 		Connection connection = null;
-		Statement selectStmtAddress0 = null;
-		CallableStatement stmtInsertCompany = null;
-		CallableStatement stmtInsertTableGuid = null;
-		CallableStatement stmtInsertChangeLog = null;
 		
 		//config Datei einlesen
 		File configFile = new File("C:\\Users\\CUH-GWX9\\git\\cobusJSON\\cobusJsonProjekt\\src\\cobusJsonProjekt\\config.properties");
@@ -69,100 +71,90 @@ public class parseTheJSON {
 		encoding = encoding == null ? "UTF-8" : encoding;
 		String jsonContent = IOUtils.toString(in, encoding);	
         
-		SQLServerDataTable cobusDataList = new SQLServerDataTable();
+		SQLServerDataTable cobusDataList = new SQLServerDataTable(); //Tabelle mit Table Value paaren erstellen
+		//Spaltenbezeichnung hinzufügen
+		cobusDataList.addColumnMetadata("laufendeNr", java.sql.Types.INTEGER);
+		cobusDataList.addColumnMetadata("companyName", java.sql.Types.NVARCHAR);
+		cobusDataList.addColumnMetadata("companyZip", java.sql.Types.NVARCHAR);
+		cobusDataList.addColumnMetadata("companyCity", java.sql.Types.NVARCHAR);
+		cobusDataList.addColumnMetadata("companyCountryCode", java.sql.Types.NVARCHAR);
+		cobusDataList.addColumnMetadata("companyBranch", java.sql.Types.NVARCHAR);
+		cobusDataList.addColumnMetadata("companyContacts", java.sql.Types.NVARCHAR);
+		cobusDataList.addColumnMetadata("companyPhone", java.sql.Types.NVARCHAR);
+		cobusDataList.addColumnMetadata("companyAddress", java.sql.Types.NVARCHAR);
+		cobusDataList.addColumnMetadata("companyId", java.sql.Types.BIGINT);
+		cobusDataList.addColumnMetadata("companyDomain", java.sql.Types.NVARCHAR);
+		cobusDataList.addColumnMetadata("companySize", java.sql.Types.NVARCHAR);
+		cobusDataList.addColumnMetadata("companyFoundingYear", java.sql.Types.NVARCHAR);
+		cobusDataList.addColumnMetadata("companyRevenue", java.sql.Types.NVARCHAR);
+		cobusDataList.addColumnMetadata("tags", java.sql.Types.NVARCHAR);
+		cobusDataList.addColumnMetadata("noteValue", java.sql.Types.NVARCHAR);
+		cobusDataList.addColumnMetadata("rating", java.sql.Types.SMALLINT);
+		cobusDataList.addColumnMetadata("scoreMaxPercentage", java.sql.Types.TINYINT);
+		cobusDataList.addColumnMetadata("scoreAvg", java.sql.Types.TINYINT);
+		cobusDataList.addColumnMetadata("visits", java.sql.Types.INTEGER);
+		cobusDataList.addColumnMetadata("visitIdList", java.sql.Types.NVARCHAR);
+
+		JSONArray jsonArray = new JSONArray(jsonContent);
+		JSONObject jsonObject = jsonArray.getJSONObject(0);  // get jsonObject @ i position 
+		JSONObject dataSet = (JSONObject) jsonObject.get("dataSet");
+		JSONArray data = (JSONArray) dataSet.get("data");
 		
-//		cobusDataList.addColumnMetadata("companyName", java.sql.Types.NVARCHAR);
-//		cobusDataList.addColumnMetadata("companyZip", java.sql.Types.NVARCHAR);
-//		cobusDataList.addColumnMetadata("companyCity", java.sql.Types.NVARCHAR);
-//		cobusDataList.addColumnMetadata("companyCountryCode", java.sql.Types.NVARCHAR);
-//		cobusDataList.addColumnMetadata("companyBranch", java.sql.Types.NVARCHAR);
-//		cobusDataList.addColumnMetadata("companyContacts", java.sql.Types.NVARCHAR);
-//		cobusDataList.addColumnMetadata("companyPhone", java.sql.Types.NVARCHAR);
-//		cobusDataList.addColumnMetadata("companyAddress", java.sql.Types.NVARCHAR);
-//		cobusDataList.addColumnMetadata("companyId", java.sql.Types.BIGINT);
-//		cobusDataList.addColumnMetadata("companyDomain", java.sql.Types.NVARCHAR);
-//		cobusDataList.addColumnMetadata("companySize", java.sql.Types.NVARCHAR);
-//		cobusDataList.addColumnMetadata("companyFoundingYear", java.sql.Types.SMALLINT);
-//		cobusDataList.addColumnMetadata("companyRevenue", java.sql.Types.NVARCHAR);
-//		cobusDataList.addColumnMetadata("tags", java.sql.Types.NVARCHAR);
-//		cobusDataList.addColumnMetadata("noteValue", java.sql.Types.NVARCHAR);
-//		cobusDataList.addColumnMetadata("rating", java.sql.Types.SMALLINT);
-//		cobusDataList.addColumnMetadata("scoreMaxPercentage", java.sql.Types.TINYINT);
-//		cobusDataList.addColumnMetadata("scoreAvg", java.sql.Types.TINYINT);
-//		cobusDataList.addColumnMetadata("visits", java.sql.Types.INTEGER);
-//		cobusDataList.addColumnMetadata("visitIdList", java.sql.Types.NVARCHAR);
-//		
-//		JSONArray jsonArray = new JSONArray(jsonContent);
-//		
-//		int count = jsonArray.length(); // Anzahl der JsonObjekte
-//		for(int i=0 ; i < count; i++){   // Durch den JsonArray iterieren
-//			JSONObject jsonObject = jsonArray.getJSONObject(i);  // get jsonObject @ i position 
-//			String jsonCompany = jsonObject.getString("companyName");
-//			String jsonZip = jsonObject.getString("companyZip");
-//			String jsonCitWy = jsonObject.getString("companyCity");
-//			String jsonCountryCode = jsonObject.getString("companyCountryCode");
-//			String jsonBranch = jsonObject.getString("companyBranch");
-//			String jsonContacts = jsonObject.getString("companyContacts");
-//			String jsonPhone = jsonObject.getString("companyPhone");
-//			String jsonAddress = jsonObject.getString("companyAddress");
-//			long jsonCompanyId = jsonObject.getBigInteger("companyId");
-//			String jsonDomain = jsonObject.getString("companyDomain");
-//			String jsonCompanySize = jsonObject.getString("companySize");
-//			int jsonFoundingYear = jsonObject.getInt("companyFoundingYear");
-//			String jsonRevenue = jsonObject.getString("companyRevenue");
-//			String jsonTags = jsonObject.getString("tags");
-//			String jsonNoteValue = jsonObject.getString("noteValue");
-//			int jsonRating = jsonObject.getInt("rating");
-//			int jsonScoreMaxPercentage= jsonObject.getInt("scoreMaxPercentage");
-//			int jsonScoreAvg = jsonObject.getInt("scoreAvg");
-//			int jsonVisits = jsonObject.getInt("visits");
-//			String jsonVisitIdList = jsonObject.getString("visitIdList");
-//			
-//			cobusDataList.addRow(jsonCompany, jsonZip, jsonCity, jsonCountryCode, jsonBranch, jsonContacts, jsonPhone, jsonAddress, jsonCompanyId,
-//					jsonDomain, jsonCompanySize, jsonFoundingYear, jsonRevenue, jsonTags, jsonNoteValue, jsonRating, jsonScoreMaxPercentage, 
-//					jsonScoreAvg, jsonVisits, jsonVisitIdList);
+		int lfdnr = 1;
+		
+		int count = data.length(); // Anzahl der JsonObjekte
+		for(int i=0 ; i < count; i++){   // Durch den JsonArray iterieren
+
+			JSONObject finalDataCollection = data.getJSONObject(i);
+			JSONArray jsonAddress = (JSONArray) finalDataCollection.get("companyAddress");
+			
+			//alle vorhandenen Informationen aus der JSON Datei in Variablen speichern
+			String jsonCompany = finalDataCollection.getString("companyName");
+			String jsonZip = finalDataCollection.getString("companyZip");
+			String jsonCity = finalDataCollection.getString("companyCity");
+			String jsonCountryCode = finalDataCollection.getString("companyCountryCode");
+			String jsonBranch = finalDataCollection.getString("companyBranch");
+			JSONArray arrayContacts = (JSONArray) finalDataCollection.get("companyContacts");
+			String jsonContacts = stringCreator(arrayContacts, "Kontakte");
+			String jsonPhone = finalDataCollection.getString("companyPhone");
+			String jsonStreet = jsonAddress.getString(0);
+			long jsonCompanyId = finalDataCollection.getLong("companyId");
+			String jsonDomain = finalDataCollection.getString("companyDomain");
+			String jsonCompanySize = finalDataCollection.getString("companySize");
+			String jsonFoundingYear = finalDataCollection.getString("companyFoundingYear");
+			String jsonRevenue = finalDataCollection.getString("companyRevenue");
+			JSONArray arrayTags = (JSONArray) finalDataCollection.get("tags");
+			String jsonTags = stringCreator(arrayTags, "Tags");
+			String jsonNoteValue = finalDataCollection.getString("noteValue");
+			int jsonRating = finalDataCollection.getInt("rating");
+			int jsonScoreMaxPercentage= finalDataCollection.getInt("scoreMaxPercentage");
+			int jsonScoreAvg = finalDataCollection.getInt("scoreAvg");
+			int jsonVisits = finalDataCollection.getInt("visits");
+			JSONArray arrayVisitIdList = (JSONArray) finalDataCollection.get("visitIdList");
+			String jsonVisitIdList = stringCreator(arrayVisitIdList, "VistIdList");
+			
+//			System.out.println(jsonContacts);
+			
+			//JSON Daten in die SQLServerDataTable einfügen
+			cobusDataList.addRow(lfdnr, jsonCompany, jsonZip, jsonCity, jsonCountryCode, jsonBranch, jsonContacts, jsonPhone, jsonStreet, jsonCompanyId,
+					jsonDomain, jsonCompanySize, jsonFoundingYear, jsonRevenue, jsonTags, jsonNoteValue, jsonRating, jsonScoreMaxPercentage, 
+					jsonScoreAvg, jsonVisits, jsonVisitIdList);
+
+			lfdnr++;
+		}
+		//insertData sp aufrufen und SQLServerDataTable übergeben
+//		try {
+//			String ececStoredProc = "EXEC insertData ?";
+//			SQLServerPreparedStatement pStmt = (SQLServerPreparedStatement)connection.prepareStatement(ececStoredProc);
+//			pStmt.setStructured(1, "dbo.DataTransferTypeCOBUS", cobusDataList);
+//			pStmt.execute();			
+//		} catch (JSONException e) {
+//			e.printStackTrace();
+//		}finally {
+//            if (connection != null) try { connection.close(); } catch(Exception e){}
+//            System.out.println("Connection closed");
 //		}
 		
-		try { 
-			JSONArray jsonArray = new JSONArray(jsonContent);
-			
-			int count = jsonArray.length(); // Anzahl der JsonObjekte
-			for(int i=0 ; i < count; i++){   // Durch den JsonArray iterieren
-				JSONObject jsonObject = jsonArray.getJSONObject(i);  // get jsonObject @ i position 
-				String jsonCompany = jsonObject.getString("company");
-				String jsonEmail = jsonObject.getString("email");
-				
-				boolean dublette = dublettenCheck(jsonObject, connection); // Überprüfen ob Firma bereits in Datenbank ist
-				
-				if(dublette == true) {
-	                System.out.println("Die Firma " + jsonCompany + " gibt es bereits im System");
-				}else {
-					String callSpCobus = "{call dbo.cobus (?, ?)}";
-					stmtInsertCompany = connection.prepareCall(callSpCobus);
-					stmtInsertCompany.setString(1, jsonCompany);
-					stmtInsertCompany.setString(2,  jsonEmail);
-	                stmtInsertCompany.execute();
-	                
-					String callSpOrel = "{call dbo.cobusOrel (?)}";
-					stmtInsertTableGuid = connection.prepareCall(callSpOrel);
-					stmtInsertTableGuid.setString(1, jsonCompany);
-	                stmtInsertTableGuid.execute();	
-	                
-	                String callSpChangeLog = "{call dbo.cobusChangeLog (?)}";
-	                stmtInsertChangeLog = connection.prepareCall(callSpChangeLog);
-	                stmtInsertChangeLog.setString(1, jsonCompany);
-	                stmtInsertChangeLog.execute();
-				}       
-			}          
-		}catch (JSONException e) {
-			e.printStackTrace();
-		}finally {
-            if (selectStmtAddress0 != null) try { selectStmtAddress0.close(); } catch(Exception e) {}
-            if (stmtInsertCompany != null) try { stmtInsertCompany.close(); } catch(Exception e) {}
-            if (stmtInsertTableGuid != null) try { stmtInsertTableGuid.close(); } catch(Exception e) {}
-            if (stmtInsertChangeLog != null) try { stmtInsertChangeLog.close(); } catch(Exception e) {}
-            if (connection != null) try { connection.close(); } catch(Exception e){}
-            System.out.println("Connection closed");
-        }
+		
 	}
 }
