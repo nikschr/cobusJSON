@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
-import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -17,21 +16,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import com.microsoft.sqlserver.jdbc.SQLServerDataTable;
+import com.microsoft.sqlserver.jdbc.SQLServerPreparedStatement;
 
 public class parseTheJSON {
-	//	Diese Funktion übergibt einen Firmennamen aus den JSON-Daten und übergibt diesen an den SQL Server
-	//	auf dem SQL Server wird die SP dbo.ExistsComp aufgerufen und der JSON-Firmenname wird mit den bestehenden Datensätzen abgeglichen
-	public static boolean dublettenCheck(JSONObject jsonObj, Connection con) throws SQLException {
-		String query = "{call dbo.ExistsComp (?, ?)}";
-		String jsonCompany = jsonObj.getString("company");
-		String jsonCompanyLower = jsonCompany.toLowerCase();
-		
-		CallableStatement compareComp = con.prepareCall(query);
-		compareComp.setString(1, jsonCompanyLower);
-		compareComp.registerOutParameter(2,  java.sql.Types.BOOLEAN);
-		compareComp.execute();	
-		return compareComp.getBoolean(2);
-	}
 	
 	public static String stringCreator(JSONArray jArr, String name) {
 		String stringBuilder = name + ": ";
@@ -73,7 +60,7 @@ public class parseTheJSON {
         
 		SQLServerDataTable cobusDataList = new SQLServerDataTable(); //Tabelle mit Table Value paaren erstellen
 		//Spaltenbezeichnung hinzufügen
-		cobusDataList.addColumnMetadata("laufendeNr", java.sql.Types.INTEGER);
+		cobusDataList.addColumnMetadata("lfdnr", java.sql.Types.INTEGER);
 		cobusDataList.addColumnMetadata("companyName", java.sql.Types.NVARCHAR);
 		cobusDataList.addColumnMetadata("companyZip", java.sql.Types.NVARCHAR);
 		cobusDataList.addColumnMetadata("companyCity", java.sql.Types.NVARCHAR);
@@ -143,17 +130,17 @@ public class parseTheJSON {
 			lfdnr++;
 		}
 		//insertData sp aufrufen und SQLServerDataTable übergeben
-//		try {
-//			String ececStoredProc = "EXEC insertData ?";
-//			SQLServerPreparedStatement pStmt = (SQLServerPreparedStatement)connection.prepareStatement(ececStoredProc);
-//			pStmt.setStructured(1, "dbo.DataTransferTypeCOBUS", cobusDataList);
-//			pStmt.execute();			
-//		} catch (JSONException e) {
-//			e.printStackTrace();
-//		}finally {
-//            if (connection != null) try { connection.close(); } catch(Exception e){}
-//            System.out.println("Connection closed");
-//		}
+		try {
+			String ececStoredProc = "EXEC insertData ?";
+			SQLServerPreparedStatement pStmt = (SQLServerPreparedStatement)connection.prepareStatement(ececStoredProc);
+			pStmt.setStructured(1, "dbo.DataTransferTypeCOBUS", cobusDataList);
+			pStmt.execute();			
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}finally {
+            if (connection != null) try { connection.close(); } catch(Exception e){}
+            System.out.println("Connection closed");
+		}
 		
 		
 	}
