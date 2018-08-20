@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
+import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -19,13 +20,13 @@ import com.microsoft.sqlserver.jdbc.SQLServerDataTable;
 import com.microsoft.sqlserver.jdbc.SQLServerPreparedStatement;
 
 public class parseTheJSON {
-	
+	//Funktion nimmt JSONArray und String(Bezeichner) als Input und fügt die einzelnen Array Einträge zu einem String zusammen
 	public static String stringCreator(JSONArray jArr, String name) {
 		String stringBuilder = name + ": ";
 		int counter = jArr.length();
 		for(int i = 0; i < counter; i++) {
 			stringBuilder += jArr.getString(i);
-			stringBuilder = stringBuilder + ", ";
+			stringBuilder = stringBuilder + "\n";
 		}
 		return stringBuilder;
 	}
@@ -58,7 +59,7 @@ public class parseTheJSON {
 		encoding = encoding == null ? "UTF-8" : encoding;
 		String jsonContent = IOUtils.toString(in, encoding);	
         
-		SQLServerDataTable cobusDataList = new SQLServerDataTable(); //Tabelle mit Table Value paaren erstellen
+		SQLServerDataTable cobusDataList = new SQLServerDataTable(); //Tabelle mit Table Valued Parametern erstellen
 		//Spaltenbezeichnung hinzufügen
 		cobusDataList.addColumnMetadata("lfdnr", java.sql.Types.INTEGER);
 		cobusDataList.addColumnMetadata("companyName", java.sql.Types.NVARCHAR);
@@ -83,16 +84,16 @@ public class parseTheJSON {
 		cobusDataList.addColumnMetadata("visitIdList", java.sql.Types.NVARCHAR);
 
 		JSONArray jsonArray = new JSONArray(jsonContent);
-		JSONObject jsonObject = jsonArray.getJSONObject(0);  // get jsonObject @ i position 
-		JSONObject dataSet = (JSONObject) jsonObject.get("dataSet");
-		JSONArray data = (JSONArray) dataSet.get("data");
+		JSONObject jsonObject = jsonArray.getJSONObject(0);  // jsonObject an erster Position (Kompletter Inhlat der Json Datei)
+		JSONObject dataSet = (JSONObject) jsonObject.get("dataSet"); // 1. Unterpunkt vom jsonObjekt
+		JSONArray data = (JSONArray) dataSet.get("data"); // Array beinhaltet alle relevanten Daten -- hiermit wird gearbeitet
 		
 		int lfdnr = 1;
 		
 		int count = data.length(); // Anzahl der JsonObjekte
 		for(int i=0 ; i < count; i++){   // Durch den JsonArray iterieren
 
-			JSONObject finalDataCollection = data.getJSONObject(i);
+			JSONObject finalDataCollection = data.getJSONObject(i); // get jsonObject @ i position
 			JSONArray jsonAddress = (JSONArray) finalDataCollection.get("companyAddress");
 			
 			//alle vorhandenen Informationen aus der JSON Datei in Variablen speichern
@@ -120,28 +121,28 @@ public class parseTheJSON {
 			JSONArray arrayVisitIdList = (JSONArray) finalDataCollection.get("visitIdList");
 			String jsonVisitIdList = stringCreator(arrayVisitIdList, "VistIdList");
 			
-//			System.out.println(jsonContacts);
-			
 			//JSON Daten in die SQLServerDataTable einfügen
 			cobusDataList.addRow(lfdnr, jsonCompany, jsonZip, jsonCity, jsonCountryCode, jsonBranch, jsonContacts, jsonPhone, jsonStreet, jsonCompanyId,
 					jsonDomain, jsonCompanySize, jsonFoundingYear, jsonRevenue, jsonTags, jsonNoteValue, jsonRating, jsonScoreMaxPercentage, 
 					jsonScoreAvg, jsonVisits, jsonVisitIdList);
 
 			lfdnr++;
+			System.out.println(jsonContacts);
 		}
-		//insertData sp aufrufen und SQLServerDataTable übergeben
+		//insertData sp aufrufen und SQLServerDataTable übergeben, transferData sp aufrufen um die Daten in die richtigen Tabellen zu schreiben
 		try {
+			String ececSpTransferData = "EXEC dbo.TransferData";
 			String ececStoredProc = "EXEC insertData ?";
+			CallableStatement cStmt = connection.prepareCall(ececSpTransferData);
 			SQLServerPreparedStatement pStmt = (SQLServerPreparedStatement)connection.prepareStatement(ececStoredProc);
 			pStmt.setStructured(1, "dbo.DataTransferTypeCOBUS", cobusDataList);
 			pStmt.execute();			
+			cStmt.execute();
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}finally {
             if (connection != null) try { connection.close(); } catch(Exception e){}
             System.out.println("Connection closed");
-		}
-		
-		
+		}	
 	}
 }
