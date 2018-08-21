@@ -21,12 +21,12 @@ import com.microsoft.sqlserver.jdbc.SQLServerPreparedStatement;
 
 public class parseTheJSON {
 	//Funktion nimmt JSONArray und String(Bezeichner) als Input und fügt die einzelnen Array Einträge zu einem String zusammen
-	public static String stringCreator(JSONArray jArr, String name) {
-		String stringBuilder = name + ": ";
+	public static String stringCreator(JSONArray jArr) {
+		String stringBuilder = "";
 		int counter = jArr.length();
 		for(int i = 0; i < counter; i++) {
 			stringBuilder += jArr.getString(i);
-			stringBuilder = stringBuilder + "\n";
+			stringBuilder = stringBuilder + ", \n";
 		}
 		return stringBuilder;
 	}
@@ -103,7 +103,7 @@ public class parseTheJSON {
 			String jsonCountryCode = finalDataCollection.getString("companyCountryCode");
 			String jsonBranch = finalDataCollection.getString("companyBranch");
 			JSONArray arrayContacts = (JSONArray) finalDataCollection.get("companyContacts");
-			String jsonContacts = stringCreator(arrayContacts, "Kontakte");
+			String jsonContacts = stringCreator(arrayContacts);
 			String jsonPhone = finalDataCollection.getString("companyPhone");
 			String jsonStreet = jsonAddress.getString(0);
 			long jsonCompanyId = finalDataCollection.getLong("companyId");
@@ -112,14 +112,14 @@ public class parseTheJSON {
 			String jsonFoundingYear = finalDataCollection.getString("companyFoundingYear");
 			String jsonRevenue = finalDataCollection.getString("companyRevenue");
 			JSONArray arrayTags = (JSONArray) finalDataCollection.get("tags");
-			String jsonTags = stringCreator(arrayTags, "Tags");
+			String jsonTags = stringCreator(arrayTags);
 			String jsonNoteValue = finalDataCollection.getString("noteValue");
 			int jsonRating = finalDataCollection.getInt("rating");
 			int jsonScoreMaxPercentage= finalDataCollection.getInt("scoreMaxPercentage");
 			int jsonScoreAvg = finalDataCollection.getInt("scoreAvg");
 			int jsonVisits = finalDataCollection.getInt("visits");
 			JSONArray arrayVisitIdList = (JSONArray) finalDataCollection.get("visitIdList");
-			String jsonVisitIdList = stringCreator(arrayVisitIdList, "VistIdList");
+			String jsonVisitIdList = stringCreator(arrayVisitIdList);
 			
 			//JSON Daten in die SQLServerDataTable einfügen
 			cobusDataList.addRow(lfdnr, jsonCompany, jsonZip, jsonCity, jsonCountryCode, jsonBranch, jsonContacts, jsonPhone, jsonStreet, jsonCompanyId,
@@ -127,7 +127,6 @@ public class parseTheJSON {
 					jsonScoreAvg, jsonVisits, jsonVisitIdList);
 
 			lfdnr++;
-			System.out.println(jsonContacts);
 		}
 		//insertData sp aufrufen und SQLServerDataTable übergeben, transferData sp aufrufen um die Daten in die richtigen Tabellen zu schreiben
 		try {
@@ -135,7 +134,7 @@ public class parseTheJSON {
 			String ececStoredProc = "EXEC insertData ?";
 			CallableStatement cStmt = connection.prepareCall(ececSpTransferData);
 			SQLServerPreparedStatement pStmt = (SQLServerPreparedStatement)connection.prepareStatement(ececStoredProc);
-			pStmt.setStructured(1, "dbo.DataTransferTypeCOBUS", cobusDataList);
+			pStmt.setStructured(1, "dbo.DataTransferTypeCOBUS", cobusDataList); // Tabelle mit table valued Parametern an dbo.DataTransferTypeCOBUS übergeben
 			pStmt.execute();			
 			cStmt.execute();
 		} catch (JSONException e) {
