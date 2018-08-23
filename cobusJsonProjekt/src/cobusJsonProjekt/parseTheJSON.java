@@ -1,7 +1,7 @@
 package cobusJsonProjekt;
 
 import java.io.File;
-import java.io.FileReader;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -32,18 +32,18 @@ public class parseTheJSON {
 	}
 	
 	public static void main(String[] args) throws IOException, SQLException {
-		
-		URL url = new URL("https://comatra2.cobus-concept.de/app.php/feedreports/configs/1528791151589650420/feeds/229597e4efec158142537bdf77af80b22b91714d");	
+			
 		String sqlConnectionString;
 
 		//JDBC Connection Objekt
 		Connection connection = null;
 		
-		//config Datei einlesen
-		File configFile = new File("C:\\Users\\CUH-GWX9\\git\\cobusJSON\\cobusJsonProjekt\\src\\cobusJsonProjekt\\config.properties");
-		FileReader reader = new FileReader(configFile);
+		//config Datei aus dem home directory auslesen
 		Properties props = new Properties();
-		props.load(reader);
+		String home = System.getProperty("user.home");
+		File userHome = new File(home, "config.properties");
+		InputStream is = new FileInputStream(userHome);
+		props.load(is);
 		
 		//connection String für die Verbindung zum SQL Server bilden
 		sqlConnectionString = props.getProperty("general") + props.getProperty("database") + props.getProperty("user") + props.getProperty("password");
@@ -53,6 +53,7 @@ public class parseTheJSON {
 		System.out.println("Connected");
 		
 		//JSON per URL auslesen
+		URL url = new URL(props.getProperty("cobusUrl"));
 		URLConnection con = url.openConnection();
 		InputStream in = con.getInputStream();
 		String encoding = con.getContentEncoding();
