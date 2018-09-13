@@ -10,13 +10,20 @@ import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.Properties;
+import java.util.Set;
+
 import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 import com.microsoft.sqlserver.jdbc.SQLServerDataTable;
+import com.microsoft.sqlserver.jdbc.SQLServerException;
 import com.microsoft.sqlserver.jdbc.SQLServerPreparedStatement;
 
 public class parseTheJSON {
@@ -26,9 +33,30 @@ public class parseTheJSON {
 		int counter = jArr.length();
 		for(int i = 0; i < counter; i++) {
 			stringBuilder += jArr.getString(i);
-			stringBuilder = stringBuilder + ", \n";
+			stringBuilder += ", \r\n";
 		}
 		return stringBuilder;
+	}
+	
+	//Funktion nimmt Firmenname und Multimap mit Klickinformationen als Eingabe Parameter und ordnet die Links der besuchten Seite der entsprechenden
+	//Firma zu
+	public static String stringCreatorKlicks(String comp, Multimap<String, String> multi) {
+		String klickUrls = "";
+		
+		Set<String> set = multi.keySet();
+		Iterator<String> iterator = set.iterator();
+		while(iterator.hasNext()) {
+			String compName = (String) iterator.next();
+			if(comp.equals(compName)) {
+		    	 Collection<String> values = multi.get(compName);
+		    	 Iterator<String> it = values.iterator();
+		    	 while(it.hasNext()) {
+		    		 klickUrls += it.next();
+		    		 klickUrls += "\r\n";
+		    	 }
+		    }
+		} 
+	    return klickUrls;
 	}
 	
 	public static void main(String[] args) throws IOException, SQLException {
@@ -83,11 +111,32 @@ public class parseTheJSON {
 		cobusDataList.addColumnMetadata("scoreAvg", java.sql.Types.TINYINT);
 		cobusDataList.addColumnMetadata("visits", java.sql.Types.INTEGER);
 		cobusDataList.addColumnMetadata("visitIdList", java.sql.Types.NVARCHAR);
-
+		cobusDataList.addColumnMetadata("visitedSite", java.sql.Types.NVARCHAR);
+		
 		JSONArray jsonArray = new JSONArray(jsonContent);
-		JSONObject jsonObject = jsonArray.getJSONObject(0);  // jsonObject an erster Position (Kompletter Inhlat der Json Datei)
+		JSONObject jsonObject = jsonArray.getJSONObject(0);  // jsonObject an erster Position 
 		JSONObject dataSet = (JSONObject) jsonObject.get("dataSet"); // 1. Unterpunkt vom jsonObjekt
 		JSONArray data = (JSONArray) dataSet.get("data"); // Array beinhaltet alle relevanten Daten -- hiermit wird gearbeitet
+		
+		//Klickinformationen für Kunden in Array speichern
+		JSONObject klickKunden = jsonArray.getJSONObject(1);  //jsonObject an zweiter Position	
+		JSONObject klickKundenDataSet = (JSONObject) klickKunden.get("dataSet");
+		JSONArray klickKundenData = (JSONArray) klickKundenDataSet.get("data"); // Array beinhaltet alle Klickinformationen
+		
+		int countKlicks = klickKundenData.length();
+		
+		//Hashmap für Klickinformationen
+		Multimap<String, String> klickMap = ArrayListMultimap.create();
+	
+		//for loop um die Klickinformationen + Firmennamen in Multimap zu speichern
+		for(int i = 0; i < countKlicks; i++) {
+			JSONObject finalDataKlickKunden = klickKundenData.getJSONObject(i);
+			
+			String klickKundenCompName = finalDataKlickKunden.getString("companyName");
+			String besuchteSeiteUrl = finalDataKlickKunden.getString("pageUrlValue");
+			
+			klickMap.put(klickKundenCompName, besuchteSeiteUrl); // Multimap füllen
+		}
 		
 		int lfdnr = 1;
 		
@@ -121,14 +170,16 @@ public class parseTheJSON {
 			int jsonVisits = finalDataCollection.getInt("visits");
 			JSONArray arrayVisitIdList = (JSONArray) finalDataCollection.get("visitIdList");
 			String jsonVisitIdList = stringCreator(arrayVisitIdList);
+			String urls = stringCreatorKlicks(jsonCompany, klickMap);
 			
 			//JSON Daten in die SQLServerDataTable einfügen
 			cobusDataList.addRow(lfdnr, jsonCompany, jsonZip, jsonCity, jsonCountryCode, jsonBranch, jsonContacts, jsonPhone, jsonStreet, jsonCompanyId,
 					jsonDomain, jsonCompanySize, jsonFoundingYear, jsonRevenue, jsonTags, jsonNoteValue, jsonRating, jsonScoreMaxPercentage, 
-					jsonScoreAvg, jsonVisits, jsonVisitIdList);
+					jsonScoreAvg, jsonVisits, jsonVisitIdList, urls);
 
 			lfdnr++;
 		}
+		
 		//insertData sp aufrufen und SQLServerDataTable übergeben, transferData sp aufrufen um die Daten in die richtigen Tabellen zu schreiben
 		try {
 			String ececSpTransferData = "EXEC dbo.TransferData";
@@ -140,7 +191,10 @@ public class parseTheJSON {
 			cStmt.execute();
 		} catch (JSONException e) {
 			e.printStackTrace();
-		}finally {
+		} catch(SQLServerException s) {
+			s.printStackTrace();
+		}
+		finally {
             if (connection != null) try { connection.close(); } catch(Exception e){}
             System.out.println("Connection closed");
 		}	
